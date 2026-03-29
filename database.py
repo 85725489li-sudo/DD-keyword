@@ -21,6 +21,7 @@ def init_db():
             country_id TEXT NOT NULL,
             country_code TEXT NOT NULL,
             country_name TEXT NOT NULL,
+            rank_max INTEGER DEFAULT 10,
             popularity_min INTEGER DEFAULT 0,
             search_index_min INTEGER DEFAULT 0,
             search_results_min INTEGER DEFAULT 0,
@@ -69,14 +70,15 @@ def create_job(job_id, req):
     now = datetime.now().isoformat()
     conn.execute("""
         INSERT INTO jobs (id, app_ids, country_id, country_code, country_name,
-            popularity_min, search_index_min, search_results_min, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            rank_max, popularity_min, search_index_min, search_results_min, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         job_id,
         json.dumps(req["app_ids"]),
         req["country_id"],
         req["country_code"],
         req["country_name"],
+        req.get("rank_max", 10),
         req.get("popularity_min", 0),
         req.get("search_index_min", 0),
         req.get("search_results_min", 0),

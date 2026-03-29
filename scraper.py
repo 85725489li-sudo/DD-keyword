@@ -234,7 +234,7 @@ def fetch_keywords(page, internal_id: str, country_id: str, filters: dict, log) 
         search_results = item[4] if item[4] is not None else 0
         popularity = item[7] if item[7] is not None else 0
 
-        if (rank <= 10 and
+        if (rank <= filters.get("rank_max", 10) and
                 popularity >= filters.get("popularity_min", 0) and
                 search_index >= filters.get("search_index_min", 0) and
                 search_results >= filters.get("search_results_min", 0)):
@@ -257,6 +257,7 @@ def run_scrape_job(job: dict, log_fn):
     country_id = job["country_id"]
     country_code = job["country_code"]
     filters = {
+        "rank_max": job.get("rank_max", 10),
         "popularity_min": job.get("popularity_min", 0),
         "search_index_min": job.get("search_index_min", 0),
         "search_results_min": job.get("search_results_min", 0),

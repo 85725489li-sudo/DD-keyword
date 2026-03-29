@@ -39,6 +39,7 @@ class JobRequest(BaseModel):
     country_id: str
     country_code: str
     country_name: str
+    rank_max: int = 10
     popularity_min: int = 0
     search_index_min: int = 0
     search_results_min: int = 0
@@ -126,6 +127,7 @@ async def create_job_endpoint(req: JobRequest):
         "country_id": req.country_id,
         "country_code": req.country_code,
         "country_name": req.country_name,
+        "rank_max": req.rank_max,
         "popularity_min": req.popularity_min,
         "search_index_min": req.search_index_min,
         "search_results_min": req.search_results_min,

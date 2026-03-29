@@ -166,19 +166,23 @@ tr:hover td { background: #fafafa; }
         </div>
 
         <div>
-          <label style="display:block;margin-bottom:10px;font-size:13px;color:#555;font-weight:500;">筛选条件（最小值，留空不限制）</label>
+          <label style="display:block;margin-bottom:10px;font-size:13px;color:#555;font-weight:500;">筛选条件</label>
           <div class="filters-row">
             <div class="form-group">
+              <label>排名 ≤</label>
+              <input type="number" id="rankMax" placeholder="默认 10" min="1" max="100" value="10">
+            </div>
+            <div class="form-group">
               <label>流行度 ≥</label>
-              <input type="number" id="popularityMin" placeholder="如 30" min="0">
+              <input type="number" id="popularityMin" placeholder="留空不限制" min="0">
             </div>
             <div class="form-group">
               <label>搜索指数 ≥</label>
-              <input type="number" id="searchIndexMin" placeholder="如 4606" min="0">
+              <input type="number" id="searchIndexMin" placeholder="留空不限制" min="0">
             </div>
             <div class="form-group">
               <label>搜索结果数 ≥</label>
-              <input type="number" id="searchResultsMin" placeholder="如 100" min="0">
+              <input type="number" id="searchResultsMin" placeholder="留空不限制" min="0">
             </div>
           </div>
         </div>
@@ -188,7 +192,7 @@ tr:hover td { background: #fafafa; }
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
             开始爬取
           </button>
-          <span class="hint">排名≤10 为固定条件</span>
+          <span class="hint">排名默认≤10，可修改</span>
         </div>
       </div>
     </div>
@@ -318,6 +322,7 @@ async function startScrape() {
     country_id: country.id,
     country_code: country.code,
     country_name: country.name,
+    rank_max: parseInt(document.getElementById('rankMax').value) || 10,
     popularity_min: parseInt(document.getElementById('popularityMin').value) || 0,
     search_index_min: parseInt(document.getElementById('searchIndexMin').value) || 0,
     search_results_min: parseInt(document.getElementById('searchResultsMin').value) || 0,
