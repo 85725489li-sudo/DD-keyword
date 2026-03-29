@@ -60,6 +60,12 @@ def init_db():
         );
 
         INSERT OR IGNORE INTO session (id, cookies, updated_at) VALUES (1, NULL, NULL);
+
+        CREATE TABLE IF NOT EXISTS app_id_cache (
+            app_store_id TEXT PRIMARY KEY,
+            internal_id TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
     """)
     conn.commit()
     conn.close()
@@ -156,6 +162,25 @@ def get_logs(job_id, after_id=0):
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def get_internal_id_cache(app_store_id):
+    conn = get_db()
+    row = conn.execute(
+        "SELECT internal_id FROM app_id_cache WHERE app_store_id = ?", (app_store_id,)
+    ).fetchone()
+    conn.close()
+    return row["internal_id"] if row else None
+
+
+def save_internal_id_cache(app_store_id, internal_id):
+    conn = get_db()
+    conn.execute(
+        "INSERT OR REPLACE INTO app_id_cache (app_store_id, internal_id, updated_at) VALUES (?, ?, ?)",
+        (app_store_id, internal_id, datetime.now().isoformat())
+    )
+    conn.commit()
+    conn.close()
 
 
 def get_cookies():

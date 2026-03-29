@@ -364,45 +364,48 @@ async function startScrape() {
 
 // ── SSE 订阅 ──
 function subscribeToJob(jobId) {
-  const es = new EventSource(`/api/jobs/${jobId}/stream`);
-  currentEventSource = es;
+  let lastId = 0;
+  function connect() {
+    const es = new EventSource(`/api/jobs/${jobId}/stream?after=${lastId}`);
+    currentEventSource = es;
 
-  es.onmessage = (event) => {
-    const msg = JSON.parse(event.data);
+    es.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.id) lastId = msg.id;
 
-    if (msg.type === 'connected') {
-      document.getElementById('progressStatus').textContent = '爬取中...';
-      document.getElementById('queueWarn').style.display = 'none';
+      if (msg.type === 'connected') {
+        document.getElementById('progressStatus').textContent = '爬取中...';
+        document.getElementById('queueWarn').style.display = 'none';
 
-    } else if (msg.type === 'log') {
-      appendLog(msg.message);
-      // 判断等待状态
-      if (msg.message.includes('等待执行') || msg.message.includes('队列')) {
-        document.getElementById('progressStatus').textContent = '等待执行...';
+      } else if (msg.type === 'log') {
+        appendLog(msg.message);
+
+      } else if (msg.type === 'done') {
+        document.getElementById('progressSpinner').style.display = 'none';
+        document.getElementById('progressStatus').textContent = `✅ 完成！共 ${msg.total} 个关键词`;
+        appendLog(`✅ 爬取完成，共 ${msg.total} 个关键词`, 'log-done');
+        document.getElementById('startBtn').disabled = false;
+        es.close();
+        loadResults(jobId);
+        updateQueueBadge();
+
+      } else if (msg.type === 'error') {
+        document.getElementById('progressSpinner').style.display = 'none';
+        document.getElementById('progressStatus').textContent = '❌ 爬取失败';
+        appendLog('❌ ' + msg.message, 'log-error');
+        document.getElementById('startBtn').disabled = false;
+        es.close();
+        updateQueueBadge();
       }
+    };
 
-    } else if (msg.type === 'done') {
-      document.getElementById('progressSpinner').style.display = 'none';
-      document.getElementById('progressStatus').textContent = `✅ 完成！共 ${msg.total} 个关键词`;
-      appendLog(`✅ 爬取完成，共 ${msg.total} 个关键词`, 'log-done');
-      document.getElementById('startBtn').disabled = false;
+    es.onerror = () => {
       es.close();
-      loadResults(jobId);
-      updateQueueBadge();
-
-    } else if (msg.type === 'error') {
-      document.getElementById('progressSpinner').style.display = 'none';
-      document.getElementById('progressStatus').textContent = '❌ 爬取失败';
-      appendLog('❌ ' + msg.message, 'log-error');
-      document.getElementById('startBtn').disabled = false;
-      es.close();
-      updateQueueBadge();
-    }
-  };
-
-  es.onerror = () => {
-    // 可能是任务还没开始，静默等待
-  };
+      // 断线后 2 秒重连，从上次位置继续
+      setTimeout(connect, 2000);
+    };
+  }
+  connect();
 }
 
 function appendLog(msg, cls) {

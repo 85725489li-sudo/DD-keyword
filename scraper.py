@@ -4,7 +4,7 @@ import time
 import random
 import requests
 from playwright.sync_api import sync_playwright
-from database import get_cookies, save_cookies, add_log
+from database import get_cookies, save_cookies, add_log, get_internal_id_cache, save_internal_id_cache
 
 DD_EMAIL = os.environ.get("DD_EMAIL", "")
 DD_PASSWORD = os.environ.get("DD_PASSWORD", "")
@@ -121,6 +121,12 @@ def get_internal_id(page, app_store_id: str, log) -> str | None:
     import re
     from collections import Counter
 
+    # 优先从缓存读取
+    cached = get_internal_id_cache(app_store_id)
+    if cached:
+        log(f"  内部 ID（缓存）: {cached}")
+        return cached
+
     log(f"  搜索内部 ID: {app_store_id}")
     page.goto(
         f"https://app.diandian.com/search?keyword={app_store_id}&type=app",
@@ -139,11 +145,13 @@ def get_internal_id(page, app_store_id: str, log) -> str | None:
     if candidates:
         iid = candidates[0][0]
         log(f"  内部 ID: {iid}")
+        save_internal_id_cache(app_store_id, iid)
         return iid
 
     if counter:
         iid = counter.most_common(1)[0][0]
         log(f"  内部 ID (fallback): {iid}")
+        save_internal_id_cache(app_store_id, iid)
         return iid
 
     log(f"  ⚠️ 未找到内部 ID")

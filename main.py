@@ -148,11 +148,11 @@ async def get_job_endpoint(job_id: str):
 
 
 @app.get("/api/jobs/{job_id}/stream")
-async def stream_job(job_id: str):
+async def stream_job(job_id: str, after: int = 0):
     """SSE 实时推送任务日志"""
 
     async def generate():
-        last_id = 0
+        last_id = after
         consecutive_empty = 0
 
         # 发送心跳保持连接
@@ -179,7 +179,7 @@ async def stream_job(job_id: str):
                     yield f"data: {{\"type\":\"error\",\"message\":\"{error}\"}}\n\n"
                     return
                 else:
-                    yield f"data: {{\"type\":\"log\",\"message\":{json.dumps(msg)}}}\n\n"
+                    yield f"data: {{\"type\":\"log\",\"id\":{last_id},\"message\":{json.dumps(msg)}}}\n\n"
 
             if job["status"] in ("done", "failed") and not logs:
                 consecutive_empty += 1
