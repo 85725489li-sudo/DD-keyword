@@ -158,11 +158,17 @@ async def stream_job(job_id: str, after: int = 0):
         # 发送心跳保持连接
         yield "data: {\"type\":\"connected\"}\n\n"
 
+        not_found_count = 0
         while True:
             job = get_job(job_id)
             if not job:
-                yield f"data: {{\"type\":\"error\",\"message\":\"任务不存在\"}}\n\n"
-                break
+                not_found_count += 1
+                if not_found_count >= 5:
+                    yield f"data: {{\"type\":\"error\",\"message\":\"任务不存在（可能服务已重启）\"}}\n\n"
+                    break
+                await asyncio.sleep(2)
+                continue
+            not_found_count = 0
 
             logs = get_logs(job_id, after_id=last_id)
             for log_row in logs:

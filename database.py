@@ -1,8 +1,9 @@
 import sqlite3
 import json
+import os
 from datetime import datetime
 
-DB_PATH = "dd_keywords.db"
+DB_PATH = os.environ.get("DB_PATH", "dd_keywords.db")
 
 
 def get_db():
