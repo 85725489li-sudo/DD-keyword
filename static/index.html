@@ -75,6 +75,8 @@ tr:hover td { background: #fafafa; }
 .app-icon { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; background: #f0f0f0; flex-shrink: 0; }
 .app-name { font-size: 13px; color: #555; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .keyword-text { font-weight: 500; }
+.keyword-link { color: #333; text-decoration: none; font-weight: 500; display: inline-flex; align-items: center; }
+.keyword-link:hover { color: #1677ff; text-decoration: underline; }
 .num-cell { font-variant-numeric: tabular-nums; color: #333; }
 .pop-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
 .pop-high { background: #fff1f0; color: #cf1322; }
@@ -223,11 +225,11 @@ tr:hover td { background: #fafafa; }
           <thead>
             <tr>
               <th>App</th>
-              <th>关键词</th>
+              <th>关键词（点击跳转商店）</th>
+              <th>排名</th>
               <th>流行度</th>
               <th>搜索指数</th>
               <th>搜索结果数</th>
-              <th>排名</th>
             </tr>
           </thead>
           <tbody id="resultsBody"></tbody>
@@ -261,11 +263,11 @@ tr:hover td { background: #fafafa; }
           <thead>
             <tr>
               <th>App</th>
-              <th>关键词</th>
+              <th>关键词（点击跳转商店）</th>
+              <th>排名</th>
               <th>流行度</th>
               <th>搜索指数</th>
               <th>搜索结果数</th>
-              <th>排名</th>
             </tr>
           </thead>
           <tbody id="modalBody"></tbody>
@@ -419,12 +421,45 @@ function appendLog(msg, cls) {
 
 // ── 加载结果 ──
 async function loadResults(jobId) {
-  const res = await fetch(`/api/jobs/${jobId}/results`);
-  const results = await res.json();
-  renderResults(results, jobId);
+  const [resultsRes, jobRes] = await Promise.all([
+    fetch(`/api/jobs/${jobId}/results`),
+    fetch(`/api/jobs/${jobId}`),
+  ]);
+  const results = await resultsRes.json();
+  const job = await jobRes.json();
+  renderResults(results, jobId, job.country_code || 'us');
 }
 
-function renderResults(results, jobId) {
+function appStoreSearchUrl(keyword, countryCode) {
+  return `https://apps.apple.com/${countryCode}/search?term=${encodeURIComponent(keyword)}`;
+}
+
+function buildRow(r, countryCode) {
+  const storeUrl = appStoreSearchUrl(r.keyword, countryCode);
+  return `
+    <td>
+      <div class="app-cell">
+        ${r.app_icon ? `<img class="app-icon" src="${r.app_icon}" alt="" onerror="this.style.display='none'">` : '<div class="app-icon"></div>'}
+        <div>
+          <div class="app-name" title="${r.app_name}">${r.app_name || r.app_id}</div>
+          <div style="font-size:11px;color:#bbb">${r.app_id}</div>
+        </div>
+      </div>
+    </td>
+    <td>
+      <a class="keyword-link" href="${storeUrl}" target="_blank" title="在 App Store 搜索此关键词">
+        ${r.keyword}
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-left:3px;opacity:0.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+      </a>
+    </td>
+    <td class="num-cell" style="font-weight:600;color:#1677ff">${r.rank}</td>
+    <td><span class="pop-badge ${popClass(r.popularity)}">${r.popularity}</span></td>
+    <td class="num-cell">${r.search_index}</td>
+    <td class="num-cell">${r.search_results}</td>
+  `;
+}
+
+function renderResults(results, jobId, countryCode) {
   document.getElementById('resultsCard').style.display = 'block';
   document.getElementById('totalCount').textContent = `（${results.length} 条）`;
 
@@ -438,22 +473,7 @@ function renderResults(results, jobId) {
 
   results.forEach(r => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>
-        <div class="app-cell">
-          ${r.app_icon ? `<img class="app-icon" src="${r.app_icon}" alt="" onerror="this.style.display='none'">` : '<div class="app-icon"></div>'}
-          <div>
-            <div class="app-name" title="${r.app_name}">${r.app_name || r.app_id}</div>
-            <div style="font-size:11px;color:#bbb">${r.app_id}</div>
-          </div>
-        </div>
-      </td>
-      <td><span class="keyword-text">${r.keyword}</span></td>
-      <td><span class="pop-badge ${popClass(r.popularity)}">${r.popularity}</span></td>
-      <td class="num-cell">${r.search_index}</td>
-      <td class="num-cell">${r.search_results}</td>
-      <td class="num-cell">${r.rank}</td>
-    `;
+    tr.innerHTML = buildRow(r, countryCode);
     tbody.appendChild(tr);
   });
 }
@@ -522,23 +542,12 @@ async function openDetail(jobId) {
   document.getElementById('modalTitle').textContent = `${appIds.join(', ')} · ${job.country_name} · ${results.length} 个关键词`;
   document.getElementById('modalExportBtn').onclick = () => window.open(`/api/export/${jobId}`);
 
+  const countryCode = job.country_code || 'us';
   const tbody = document.getElementById('modalBody');
   tbody.innerHTML = '';
   results.forEach(r => {
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>
-        <div class="app-cell">
-          ${r.app_icon ? `<img class="app-icon" src="${r.app_icon}" alt="" onerror="this.style.display='none'">` : '<div class="app-icon"></div>'}
-          <span class="app-name" title="${r.app_name}">${r.app_name || r.app_id}</span>
-        </div>
-      </td>
-      <td><span class="keyword-text">${r.keyword}</span></td>
-      <td><span class="pop-badge ${popClass(r.popularity)}">${r.popularity}</span></td>
-      <td class="num-cell">${r.search_index}</td>
-      <td class="num-cell">${r.search_results}</td>
-      <td class="num-cell">${r.rank}</td>
-    `;
+    tr.innerHTML = buildRow(r, countryCode);
     tbody.appendChild(tr);
   });
 
